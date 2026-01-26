@@ -78,15 +78,31 @@ function findZohoContactByEmail(accessToken, email, credentials) {
 }
 
 /**
- * Finds a product in Zoho CRM by product name to get its ID.
+ * Finds a product in Zoho CRM by combining subscription type and billing cycle.
  * 
  * @param {string} accessToken - Valid Zoho access token
- * @param {string} productName - Product name to search for (e.g., "Low Stakes")
+ * @param {string} subscriptionType - Subscription type (Low Stakes, Mid Stakes, High Stakes)
+ * @param {string} billingCycle - Billing cycle (Monthly, Annual, Custom)
  * @param {Object} credentials - The credentials object
  * @returns {string} The product ID
  * @throws {Error} If product is not found
  */
-function findZohoProductByName(accessToken, productName, credentials) {
+function findZohoProductBySubscriptionAndCycle(accessToken, subscriptionType, billingCycle, credentials) {
+  // Handle "Custom" billing cycle - default to Monthly
+  let actualBillingCycle = billingCycle;
+  if (billingCycle === 'Custom') {
+    Logger.log('Billing cycle is "Custom" - defaulting to "Monthly"');
+    actualBillingCycle = 'Monthly';
+  }
+  
+  // Build the product name based on subscription type and billing cycle
+  // Format: "{Subscription Type} - {Monthly|Annually}"
+  const billingFrequency = actualBillingCycle === 'Monthly' ? 'Monthly' : 'Annually';
+  const productName = subscriptionType + ' - ' + billingFrequency;
+  
+  Logger.log('Looking for product: ' + productName);
+  
+  // Search for the product
   const searchUrl = credentials.zohoApiDomain + '/crm/v2/Products/search?criteria=(Product_Name:equals:' + encodeURIComponent(productName) + ')';
   
   const options = {
@@ -100,9 +116,9 @@ function findZohoProductByName(accessToken, productName, credentials) {
   const response = UrlFetchApp.fetch(searchUrl, options);
   const responseCode = response.getResponseCode();
   
-  // If no results, try a different search approach
+  // If no results, try fetching all products and searching manually
   if (responseCode === 204) {
-    // Try searching all products
+    Logger.log('Search returned no results, fetching all products...');
     const allProductsUrl = credentials.zohoApiDomain + '/crm/v2/Products';
     const allResponse = UrlFetchApp.fetch(allProductsUrl, options);
     const allResponseBody = JSON.parse(allResponse.getContentText());
@@ -113,6 +129,7 @@ function findZohoProductByName(accessToken, productName, credentials) {
       });
       
       if (matchingProduct) {
+        Logger.log('Found product ID: ' + matchingProduct.id);
         return matchingProduct.id;
       }
     }
@@ -126,6 +143,7 @@ function findZohoProductByName(accessToken, productName, credentials) {
     throw new Error('Product not found in Zoho CRM: ' + productName);
   }
   
+  Logger.log('Found product ID: ' + responseBody.data[0].id);
   return responseBody.data[0].id;
 }
 
@@ -154,9 +172,14 @@ function createZohoSubscription(rowData) {
   const contactId = findZohoContactByEmail(accessToken, rowData.email, credentials);
   Logger.log('Found contact ID: ' + contactId);
   
-  // Step 3: Find product by subscription type to get product ID
-  Logger.log('Finding product for: ' + rowData.subscriptionType);
-  const productId = findZohoProductByName(accessToken, rowData.subscriptionType, credentials);
+  // Step 3: Find product by subscription type AND billing cycle
+  Logger.log('Finding product for: ' + rowData.subscriptionType + ' - ' + rowData.billingCycle);
+  const productId = findZohoProductBySubscriptionAndCycle(
+    accessToken, 
+    rowData.subscriptionType, 
+    rowData.billingCycle, 
+    credentials
+  );
   Logger.log('Found product ID: ' + productId);
   
   // Step 4: Format dates
@@ -174,7 +197,7 @@ function createZohoSubscription(rowData) {
         'Contact': {
           'id': contactId
         },
-        'Transaction_Type': rowData.transactionType,
+        'Transaction_Type': rowData.transactionTypeForZoho,  // Use mapped value
         'Plan_Name': {
           'id': productId
         },

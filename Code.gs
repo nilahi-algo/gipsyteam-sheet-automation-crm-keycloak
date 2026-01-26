@@ -21,6 +21,15 @@ var COLUMNS = {
   NOTES: 8            // Column I
 };
 
+// Transaction type mapping: Google Sheet -> Zoho CRM
+var TRANSACTION_TYPE_MAPPING = {
+  'New Subscription': 'Moved To Paid',
+  'Renewal': 'Renew Transaction',
+  'Upgrade': 'Upgrade',
+  'Refund/Cancellation': 'Cancelled',
+  'Extension': 'Renew Transaction'
+};
+
 // Delay in milliseconds before processing a row (3 minutes)
 var PROCESSING_DELAY_MS = 3 * 60 * 1000;
 
@@ -148,6 +157,12 @@ function shouldProcessRow(row, sheet, rowNumber) {
     return false;
   }
   
+  // Validate billing cycle
+  const billingCycle = row[COLUMNS.BILLING_CYCLE];
+  if (transactionType !== 'Refund/Cancellation' && !billingCycle) {
+    return false;
+  }
+  
   // Check 3-minute delay requirement
   // We use a script property to track when rows were first seen
   const rowKey = 'row_first_seen_' + rowNumber;
@@ -180,10 +195,13 @@ function shouldProcessRow(row, sheet, rowNumber) {
  * @returns {Object} Structured row data
  */
 function extractRowData(row) {
+  const rawTransactionType = row[COLUMNS.TRANSACTION_TYPE].toString().trim();
+  
   return {
     id: row[COLUMNS.ID],
     email: row[COLUMNS.EMAIL].toString().trim(),
-    transactionType: row[COLUMNS.TRANSACTION_TYPE].toString().trim(),
+    transactionType: rawTransactionType,  // Keep original for Keycloak
+    transactionTypeForZoho: TRANSACTION_TYPE_MAPPING[rawTransactionType] || rawTransactionType,  // Mapped for Zoho
     subscriptionType: row[COLUMNS.SUBSCRIPTION_TYPE] ? row[COLUMNS.SUBSCRIPTION_TYPE].toString().trim() : null,
     billingCycle: row[COLUMNS.BILLING_CYCLE] ? row[COLUMNS.BILLING_CYCLE].toString().trim() : null,
     transactionDate: row[COLUMNS.TRANSACTION_DATE],
