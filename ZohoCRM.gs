@@ -84,7 +84,7 @@ function findZohoContactByEmail(accessToken, email, credentials) {
  * @param {string} subscriptionType - Subscription type (Low Stakes, Mid Stakes, High Stakes)
  * @param {string} billingCycle - Billing cycle (Monthly, Annual, Custom)
  * @param {Object} credentials - The credentials object
- * @returns {string} The product ID
+ * @returns {Object} An object with product id and name: {id: string, name: string}
  * @throws {Error} If product is not found
  */
 function findZohoProductBySubscriptionAndCycle(accessToken, subscriptionType, billingCycle, credentials) {
@@ -130,7 +130,10 @@ function findZohoProductBySubscriptionAndCycle(accessToken, subscriptionType, bi
       
       if (matchingProduct) {
         Logger.log('Found product ID: ' + matchingProduct.id);
-        return matchingProduct.id;
+        return {
+          id: matchingProduct.id,
+          name: matchingProduct.Product_Name
+        };
       }
     }
     
@@ -144,7 +147,10 @@ function findZohoProductBySubscriptionAndCycle(accessToken, subscriptionType, bi
   }
   
   Logger.log('Found product ID: ' + responseBody.data[0].id);
-  return responseBody.data[0].id;
+  return {
+    id: responseBody.data[0].id,
+    name: responseBody.data[0].Product_Name
+  };
 }
 
 /**
@@ -174,20 +180,23 @@ function createZohoSubscription(rowData) {
   
   // Step 3: Find product by subscription type AND billing cycle
   Logger.log('Finding product for: ' + rowData.subscriptionType + ' - ' + rowData.billingCycle);
-  const productId = findZohoProductBySubscriptionAndCycle(
+  const productInfo = findZohoProductBySubscriptionAndCycle(
     accessToken, 
     rowData.subscriptionType, 
     rowData.billingCycle, 
     credentials
   );
+  const productId = productInfo.id;
+  const productName = productInfo.name;
   Logger.log('Found product ID: ' + productId);
+  Logger.log('Found product Name: ' + productName);
   
   // Step 4: Format dates
   const transactionDateFormatted = formatDateForZoho(rowData.transactionDate);
   const renewalDateFormatted = rowData.renewalDate ? formatDateForZoho(rowData.renewalDate) : null;
   
-  // Step 5: Create the subscription transaction name
-  const transactionName = rowData.email + ' - ' + rowData.transactionType + ' - ' + transactionDateFormatted;
+  // Step 5: Create the subscription transaction name (use product name)
+  const transactionName = productName; // Use the product name directly
   
   // Step 6: Build the payload
   const payload = {
