@@ -139,6 +139,7 @@ function shouldProcessRow(row, sheet, rowNumber) {
   // Check if already processed (Column H checkbox)
   const isProcessed = row[COLUMNS.PROCESSED];
   if (isProcessed === true) {
+    Logger.log('Row ' + rowNumber + ': Already processed, skipping...');
     return false;
   }
   
