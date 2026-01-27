@@ -30,6 +30,15 @@ var TRANSACTION_TYPE_MAPPING = {
   'Extension': 'Renew Transaction'
 };
 
+// Plan Type mapping: Google Sheet -> Zoho CRM
+var PLAN_TYPE_MAPPING = {
+  'Low Stakes': 'Low',
+  'Mid Stakes': 'Mid',
+  'High Stakes': 'High',
+  'Free': 'Free',
+  'Paid but Free': 'Paid but Free'
+};
+
 // Delay in milliseconds before processing a row (3 minutes)
 var PROCESSING_DELAY_MS = 3 * 60 * 1000;
 
@@ -196,13 +205,15 @@ function shouldProcessRow(row, sheet, rowNumber) {
  */
 function extractRowData(row) {
   const rawTransactionType = row[COLUMNS.TRANSACTION_TYPE].toString().trim();
+  const rawSubscriptionType = row[COLUMNS.SUBSCRIPTION_TYPE] ? row[COLUMNS.SUBSCRIPTION_TYPE].toString().trim() : null;
   
   return {
     id: row[COLUMNS.ID],
     email: row[COLUMNS.EMAIL].toString().trim(),
     transactionType: rawTransactionType,  // Keep original for Keycloak
     transactionTypeForZoho: TRANSACTION_TYPE_MAPPING[rawTransactionType] || rawTransactionType,  // Mapped for Zoho
-    subscriptionType: row[COLUMNS.SUBSCRIPTION_TYPE] ? row[COLUMNS.SUBSCRIPTION_TYPE].toString().trim() : null,
+    subscriptionType: rawSubscriptionType,
+    planTypeForZoho: PLAN_TYPE_MAPPING[rawSubscriptionType] || null, // Mapped Plan Type for Zoho
     billingCycle: row[COLUMNS.BILLING_CYCLE] ? row[COLUMNS.BILLING_CYCLE].toString().trim() : null,
     transactionDate: row[COLUMNS.TRANSACTION_DATE],
     renewalDate: row[COLUMNS.RENEWAL_DATE] || null,

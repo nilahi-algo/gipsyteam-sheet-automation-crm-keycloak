@@ -203,7 +203,9 @@ function createZohoSubscription(rowData) {
         },
         'Frequency': rowData.billingCycle,
         'Transaction_Date': transactionDateFormatted,
-        'Subscription_Renewal_Date': renewalDateFormatted
+        'Subscription_Renewal_Date': renewalDateFormatted,
+        'Plan_Type': rowData.planTypeForZoho,  // Add the mapped Plan Type
+        'Subscription_Transaction_Date': transactionDateFormatted  // Add the transaction date
       }
     ]
   };
