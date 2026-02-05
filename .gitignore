@@ -1,0 +1,16 @@
+# Env files (secrets)
+.env
+*.env
+!*.env.example
+
+# Sensitive / local-only
+logins.json
+logins_*.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+venv/
+.venv/

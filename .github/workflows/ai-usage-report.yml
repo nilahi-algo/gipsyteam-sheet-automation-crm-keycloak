@@ -1,0 +1,51 @@
+# AI Usage Report: daily at 18:00 Dubai (14:00 UTC), monthly on 1st for previous month
+name: AI Usage Report
+
+on:
+  schedule:
+    # Every day at 14:00 UTC = 18:00 Dubai
+    - cron: '0 14 * * *'
+  workflow_dispatch:
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r scripts/ai-usage/requirements.txt
+
+      - name: Set env for Slack and APIs
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_AI_USAGE_WEBHOOK_URL: ${{ secrets.SLACK_AI_USAGE_WEBHOOK_URL }}
+          MANUS_API_KEY: ${{ secrets.MANUS_API_KEY }}
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_ADMIN_API_KEY: ${{ secrets.OPENAI_ADMIN_API_KEY }}
+        run: |
+          echo "SLACK_WEBHOOK_URL=$SLACK_WEBHOOK_URL" >> $GITHUB_ENV
+          echo "SLACK_AI_USAGE_WEBHOOK_URL=$SLACK_AI_USAGE_WEBHOOK_URL" >> $GITHUB_ENV
+          echo "MANUS_API_KEY=$MANUS_API_KEY" >> $GITHUB_ENV
+          echo "CURSOR_API_KEY=$CURSOR_API_KEY" >> $GITHUB_ENV
+          echo "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY" >> $GITHUB_ENV
+          echo "OPENAI_ADMIN_API_KEY=$OPENAI_ADMIN_API_KEY" >> $GITHUB_ENV
+
+      - name: Set day (for monthly on 1st)
+        run: echo "DAY=$(date -u +%d)" >> $GITHUB_ENV
+
+      - name: Daily report (yesterday UTC)
+        working-directory: scripts/ai-usage
+        run: python collect_usage.py
+
+      - name: Monthly report (previous month, only on 1st)
+        working-directory: scripts/ai-usage
+        run: python collect_usage.py monthly
+        if: env.DAY == '01'
